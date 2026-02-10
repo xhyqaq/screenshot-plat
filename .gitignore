@@ -1,0 +1,13 @@
+# macOS / IDE
+.DS_Store
+.idea/
+*.iml
+
+# build outputs
+bin/
+screenshot/client
+screensot-server/server
+
+# go test / coverage
+*.test
+*.out

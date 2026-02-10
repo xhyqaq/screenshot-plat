@@ -1,0 +1,9 @@
+{
+  "models": [
+    "Qwen/Qwen3-VL-32B-Instruct"
+  ],
+  "siliconflow_base_url": "https://api.siliconflow.cn",
+  "siliconflow_api_key": "${PUT_YOUR_KEY_HERE}",
+  "template_path": "web/result.html"
+}
+
