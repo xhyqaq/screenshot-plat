@@ -125,7 +125,7 @@ cd screensot-server && go build -o server ./cmd/server
 # client
 cd screenshot && go build -o client ./cmd/client
 ```
- - 不同操作系统/架构交叉编译：
+- 不同操作系统/架构交叉编译：
 ```
 # macOS (arm64)
 cd screensot-server && GOOS=darwin GOARCH=arm64 go build -o server-darwin-arm64 ./cmd/server
@@ -143,6 +143,18 @@ cd screenshot && GOOS=linux GOARCH=amd64 go build -o client-linux-amd64 ./cmd/cl
 cd screensot-server && GOOS=windows GOARCH=amd64 go build -o server-windows-amd64.exe ./cmd/server
 cd screenshot && GOOS=windows GOARCH=amd64 go build -o client-windows-amd64.exe ./cmd/client
 ```
+- GitHub Release 自动打包（推荐）
+  - 本仓库已提供 `.github/workflows/release.yml`，对 tag 触发构建并上传 Release 资产。
+  - 使用方式：
+```
+git tag v0.1.0
+git push origin v0.1.0
+```
+  - 完成后在 GitHub Releases 页面下载对应平台二进制。
+  - 说明（重点是客户端）：
+    - 客户端产物：Windows amd64、macOS arm64（默认）
+    - macOS Intel（amd64）会尝试使用 macos-13 runner 构建；若该 runner 不可用，任务会跳过但不影响 Release
+    - 服务端构建仅供内部部署，可通过 workflow_dispatch 关闭
 
 常见问题
 - Template not found

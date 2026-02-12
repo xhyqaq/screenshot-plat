@@ -1,0 +1,130 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      build_macos_amd64:
+        description: "是否尝试构建 macOS Intel 客户端（需要 macos-13 runner）"
+        required: false
+        default: "true"
+      build_server:
+        description: "是否构建 server（默认构建，仅供内部部署）"
+        required: false
+        default: "true"
+
+permissions:
+  contents: write
+
+jobs:
+  build-client-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Build client (windows)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Push-Location screenshot
+          go build -o ..\dist\client-windows-amd64.exe .\cmd\client
+          Pop-Location
+          Compress-Archive -Path "dist\\client-windows-amd64.exe" -DestinationPath "dist\\screenshot-plat-client-windows-amd64.zip"
+      - name: Upload client (windows)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/screenshot-plat-client-windows-amd64.zip
+
+  build-client-macos-arm64:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Build client (macOS arm64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          (cd screenshot && GOOS=darwin GOARCH=arm64 go build -o "../dist/client-darwin-arm64" ./cmd/client)
+          tar -czf "dist/screenshot-plat-client-darwin-arm64.tar.gz" -C dist client-darwin-arm64
+      - name: Upload client (macOS)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/screenshot-plat-client-darwin-arm64.tar.gz
+
+  build-client-macos-amd64:
+    runs-on: macos-13
+    continue-on-error: true
+    if: ${{ github.event_name == 'push' || inputs.build_macos_amd64 == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Build client (macOS amd64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          (cd screenshot && GOOS=darwin GOARCH=amd64 go build -o "../dist/client-darwin-amd64" ./cmd/client)
+          tar -czf "dist/screenshot-plat-client-darwin-amd64.tar.gz" -C dist client-darwin-amd64
+      - name: Upload client (macOS amd64)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/screenshot-plat-client-darwin-amd64.tar.gz
+
+  build-server:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || inputs.build_server == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: linux
+            arch: amd64
+          - os: linux
+            arch: arm64
+          - os: darwin
+            arch: amd64
+          - os: darwin
+            arch: arm64
+          - os: windows
+            arch: amd64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Build server (cross-compile)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          name="server-${{ matrix.os }}-${{ matrix.arch }}"
+          if [ "${{ matrix.os }}" = "windows" ]; then
+            name="${name}.exe"
+          fi
+          (cd screensot-server && CGO_ENABLED=0 GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} go build -o "../dist/${name}" ./cmd/server)
+      - name: Package server
+        if: matrix.os != 'windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "dist/screenshot-plat-server-${{ matrix.os }}-${{ matrix.arch }}.tar.gz" -C dist "server-${{ matrix.os }}-${{ matrix.arch }}"
+      - name: Package server (zip)
+        if: matrix.os == 'windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "dist\\server-${{ matrix.os }}-${{ matrix.arch }}.exe" -DestinationPath "dist\\screenshot-plat-server-${{ matrix.os }}-${{ matrix.arch }}.zip"
+      - name: Upload server assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/screenshot-plat-server-*.tar.gz
+            dist/screenshot-plat-server-*.zip
