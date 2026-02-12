@@ -10,7 +10,7 @@ import (
 )
 
 func (a *App) startTCPServer() {
-	a.clients = make(map[net.Conn]bool)
+	a.clients = make(map[net.Conn]string)
 	a.responseCollector = make(chan string, 1000)
 
 	listener, err := net.Listen("tcp", ":12345")
@@ -28,11 +28,6 @@ func (a *App) startTCPServer() {
 			continue
 		}
 		fmt.Println("TCP client connected:", conn.RemoteAddr().String())
-
-		a.clientsMutex.Lock()
-		a.clients[conn] = true
-		a.clientsMutex.Unlock()
-
 		go a.handleTCPClient(conn)
 	}
 }
@@ -44,6 +39,16 @@ func (a *App) handleTCPClient(conn net.Conn) {
 		delete(a.clients, conn)
 		a.clientsMutex.Unlock()
 	}()
+
+	deviceID, err := a.authenticateClient(conn)
+	if err != nil {
+		fmt.Println("TCP client auth failed:", err)
+		return
+	}
+	a.clientsMutex.Lock()
+	a.clients[conn] = deviceID
+	a.clientsMutex.Unlock()
+	fmt.Println("TCP client authenticated:", conn.RemoteAddr().String(), "device_id="+deviceID)
 
 	for {
 		dataBytes, err := protocol.ReadWithLengthPrefix(conn)
@@ -85,4 +90,31 @@ func (a *App) sendCaptureCommandToClients() {
 			}
 		}(c)
 	}
+}
+
+func (a *App) authenticateClient(conn net.Conn) (string, error) {
+	dataBytes, err := protocol.ReadWithLengthPrefix(conn)
+	if err != nil {
+		return "", err
+	}
+	var req protocol.AuthRequest
+	if err := json.Unmarshal(dataBytes, &req); err != nil {
+		sendAuthResponse(conn, 400, "invalid auth request")
+		return "", err
+	}
+	if err := a.invites.Authenticate(req.InviteCode, req.DeviceID); err != nil {
+		sendAuthResponse(conn, 401, err.Error())
+		return "", err
+	}
+	sendAuthResponse(conn, 200, "")
+	return req.DeviceID, nil
+}
+
+func sendAuthResponse(conn net.Conn, code int, msg string) {
+	resp := protocol.AuthResponse{Code: code, Error: msg}
+	b, err := json.Marshal(resp)
+	if err != nil {
+		return
+	}
+	_ = protocol.SendWithLengthPrefix(conn, b)
 }

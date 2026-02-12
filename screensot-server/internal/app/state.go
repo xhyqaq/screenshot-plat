@@ -7,7 +7,7 @@ import (
 
 // 服务器运行期共享状态
 type state struct {
-	clients           map[net.Conn]bool
+	clients           map[net.Conn]string
 	clientsMutex      sync.Mutex
 	responseCollector chan string
 	// 最近一次“已识别”的结果，用于 capture 模式下保留上次识别内容

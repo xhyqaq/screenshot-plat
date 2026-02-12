@@ -18,6 +18,10 @@ type Config struct {
 	SiliconflowAPIKey string `json:"siliconflow_api_key"`
 	// HTML 模板路径
 	TemplatePath string `json:"template_path"`
+	// 邀请码 SQLite 路径
+	SQLitePath string `json:"sqlite_path"`
+	// 管理后台鉴权 Token
+	AdminToken string `json:"admin_token"`
 }
 
 func defaultConfig() Config {
@@ -25,6 +29,7 @@ func defaultConfig() Config {
 		Models:             []string{"Qwen/Qwen3-VL-32B-Instruct"},
 		SiliconflowBaseURL: "https://api.siliconflow.cn",
 		TemplatePath:       "web/result.html",
+		SQLitePath:         "data/invites.db",
 	}
 }
 
@@ -52,6 +57,12 @@ func mergeEnv(c Config) Config {
 	if env := strings.TrimSpace(os.Getenv("TEMPLATE_PATH")); env != "" {
 		c.TemplatePath = env
 	}
+	if env := strings.TrimSpace(os.Getenv("SQLITE_PATH")); env != "" {
+		c.SQLitePath = env
+	}
+	if env := strings.TrimSpace(os.Getenv("ADMIN_TOKEN")); env != "" {
+		c.AdminToken = env
+	}
 	return c
 }
 
@@ -74,6 +85,12 @@ func loadConfig() Config {
 			if fileCfg.TemplatePath != "" {
 				c.TemplatePath = fileCfg.TemplatePath
 			}
+			if fileCfg.SQLitePath != "" {
+				c.SQLitePath = fileCfg.SQLitePath
+			}
+			if fileCfg.AdminToken != "" {
+				c.AdminToken = fileCfg.AdminToken
+			}
 		} else {
 			fmt.Fprintf(os.Stderr, "warn: read config file failed: %v\n", err2)
 		}
@@ -88,7 +105,14 @@ func loadConfig() Config {
 	if len(masked) > 8 {
 		masked = masked[:4] + "***" + masked[len(masked)-3:]
 	}
-	fmt.Fprintf(os.Stderr, "using config: %s\nmodels=%v baseURL=%s key=%s template=%s\n", path, c.Models, c.SiliconflowBaseURL, masked, c.TemplatePath)
+	adminMasked := ""
+	if c.AdminToken != "" {
+		adminMasked = "set"
+	} else {
+		adminMasked = "empty"
+	}
+	fmt.Fprintf(os.Stderr, "using config: %s\nmodels=%v baseURL=%s key=%s template=%s sqlite=%s admin=%s\n",
+		path, c.Models, c.SiliconflowBaseURL, masked, c.TemplatePath, c.SQLitePath, adminMasked)
 	return c
 }
 

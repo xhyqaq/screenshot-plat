@@ -2,16 +2,25 @@ package app
 
 import (
 	"fmt"
+	"log"
 )
 
 // App 持有服务器运行期状态（TCP 客户端集合、响应收集通道等）
 type App struct {
 	*state
-	cfg Config
+	cfg     Config
+	invites *InviteStore
 }
 
 // New 创建应用实例
-func New() *App { return &App{state: &state{}, cfg: loadConfig()} }
+func New() *App {
+	cfg := loadConfig()
+	store, err := newInviteStore(cfg.SQLitePath)
+	if err != nil {
+		log.Fatalf("init invite store failed: %v", err)
+	}
+	return &App{state: &state{}, cfg: cfg, invites: store}
+}
 
 // Run 并行启动 TCP 与 HTTP 服务
 func (a *App) Run() {

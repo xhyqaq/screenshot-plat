@@ -20,8 +20,8 @@
 <body>
   <h1>屏幕截图与识别结果</h1>
   <div style="margin-bottom:12px;">
-    <a href="/one?mode=capture"><button>仅截屏刷新</button></a>
-    <a href="/one?mode=analyze"><button>截屏并识别</button></a>
+    <a href="/one?mode=capture&invite_code={{.InviteCode}}"><button>仅截屏刷新</button></a>
+    <a href="/one?mode=analyze&invite_code={{.InviteCode}}"><button>截屏并识别</button></a>
   </div>
   <div id="modal" class="modal" onclick="this.classList.remove('show')">
     <img id="modal-img" alt="Fullscreen" />
@@ -66,4 +66,3 @@
   </script>
 </body>
 </html>
-

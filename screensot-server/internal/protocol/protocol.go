@@ -13,6 +13,18 @@ type Response struct {
 	Data  []byte `json:"data"`
 }
 
+// AuthRequest 为客户端首次连接时的认证请求
+type AuthRequest struct {
+	InviteCode string `json:"invite_code"`
+	DeviceID   string `json:"device_id"`
+}
+
+// AuthResponse 为服务端返回的认证结果
+type AuthResponse struct {
+	Code  int    `json:"code"`
+	Error string `json:"error"`
+}
+
 // SendWithLengthPrefix 以 4 字节大端长度前缀发送一帧
 func SendWithLengthPrefix(conn net.Conn, data []byte) error {
 	var lengthBuf [4]byte
