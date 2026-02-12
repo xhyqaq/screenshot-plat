@@ -207,10 +207,45 @@ if (getToken()) {
 </body>
 </html>`
 
+const viewerHTML = `<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>屏幕查看</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 16px; }
+    .bar { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+    .bar button { padding: 6px 12px; }
+    iframe { width: 100%; height: 80vh; border: 1px solid #ddd; border-radius: 6px; }
+    .hint { color: #666; margin-top: 8px; }
+  </style>
+</head>
+<body>
+  <h2>屏幕查看</h2>
+  <div class="bar">
+    <button onclick="loadCapture()">仅截屏刷新</button>
+    <button onclick="loadAnalyze()">截屏并识别</button>
+  </div>
+  <iframe id="viewer" title="viewer"></iframe>
+  <div class="hint">提示：首次加载可能需要等待模型响应。</div>
+<script>
+  const inviteCode = "{{.InviteCode}}";
+  function loadCapture() {
+    document.getElementById("viewer").src = "/one?mode=capture&invite_code=" + encodeURIComponent(inviteCode);
+  }
+  function loadAnalyze() {
+    document.getElementById("viewer").src = "/one?mode=analyze&invite_code=" + encodeURIComponent(inviteCode);
+  }
+  loadAnalyze();
+</script>
+</body>
+</html>`
+
 // startHTTPServer 注册路由并启动 HTTP 服务
 func (a *App) startHTTPServer() {
 	http.HandleFunc("/", a.handleIndex)
 	http.HandleFunc("/one", a.handleOne)
+	http.HandleFunc("/view", a.handleView)
 	http.HandleFunc("/admin", a.handleAdminPage)
 	http.HandleFunc("/admin/invites", a.handleAdminInvites)
 	http.HandleFunc("/admin/invites/revoke", a.handleAdminRevoke)
@@ -227,7 +262,7 @@ func (a *App) handleIndex(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusUnauthorized)
 			return
 		}
-		a.renderCapture(w, r, inviteCode)
+		http.Redirect(w, r, "/view?invite_code="+inviteCode, http.StatusFound)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -245,6 +280,28 @@ func (a *App) handleOne(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	a.renderCapture(w, r, inviteCode)
+}
+
+func (a *App) handleView(w http.ResponseWriter, r *http.Request) {
+	inviteCode := strings.TrimSpace(r.URL.Query().Get("invite_code"))
+	if inviteCode == "" {
+		http.Error(w, "invite_code required", http.StatusUnauthorized)
+		return
+	}
+	if err := a.invites.ValidateInvite(inviteCode); err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+	tmpl, err := template.New("viewer").Parse(viewerHTML)
+	if err != nil {
+		http.Error(w, "Internal Server Error: unable to parse viewer", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	if err := tmpl.Execute(w, map[string]string{"InviteCode": inviteCode}); err != nil {
+		http.Error(w, "Internal Server Error: unable to execute viewer", http.StatusInternalServerError)
+		return
+	}
 }
 
 func (a *App) renderCapture(w http.ResponseWriter, r *http.Request, inviteCode string) {
