@@ -289,7 +289,11 @@ func (a *App) renderCapture(w http.ResponseWriter, r *http.Request, inviteCode s
 	// 根据模式决定是否进行识别
 	var analyses []ImageEntry
 	if analyze {
-		ctx, cancel := context.WithTimeout(r.Context(), 60*time.Second)
+		timeoutSeconds := a.cfg.VisionTimeoutSeconds
+		if timeoutSeconds <= 0 {
+			timeoutSeconds = 120
+		}
+		ctx, cancel := context.WithTimeout(r.Context(), time.Duration(timeoutSeconds)*time.Second)
 		defer cancel()
 		analyses = a.analyzeImages(ctx, allResponses)
 		// 识别后缓存为“最近一次已识别”

@@ -120,7 +120,11 @@ func (a *App) callVision(ctx context.Context, model, b64 string) ModelAnswer {
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+apiKey)
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	timeoutSeconds := a.cfg.VisionTimeoutSeconds
+	if timeoutSeconds <= 0 {
+		timeoutSeconds = 120
+	}
+	client := &http.Client{Timeout: time.Duration(timeoutSeconds) * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
 		result.Error = fmt.Sprintf("请求失败: %v", err)

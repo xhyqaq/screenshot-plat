@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -22,14 +23,17 @@ type Config struct {
 	SQLitePath string `json:"sqlite_path"`
 	// 管理后台鉴权 Token
 	AdminToken string `json:"admin_token"`
+	// 识别请求超时（秒）
+	VisionTimeoutSeconds int `json:"vision_timeout_seconds"`
 }
 
 func defaultConfig() Config {
 	return Config{
-		Models:             []string{"Qwen/Qwen3-VL-32B-Instruct"},
-		SiliconflowBaseURL: "https://api.siliconflow.cn",
-		TemplatePath:       "web/result.html",
-		SQLitePath:         "data/invites.db",
+		Models:               []string{"Qwen/Qwen3-VL-32B-Instruct"},
+		SiliconflowBaseURL:   "https://api.siliconflow.cn",
+		TemplatePath:         "web/result.html",
+		SQLitePath:           "data/invites.db",
+		VisionTimeoutSeconds: 120,
 	}
 }
 
@@ -63,6 +67,11 @@ func mergeEnv(c Config) Config {
 	if env := strings.TrimSpace(os.Getenv("ADMIN_TOKEN")); env != "" {
 		c.AdminToken = env
 	}
+	if env := strings.TrimSpace(os.Getenv("VISION_TIMEOUT_SECONDS")); env != "" {
+		if v, err := strconv.Atoi(env); err == nil {
+			c.VisionTimeoutSeconds = v
+		}
+	}
 	return c
 }
 
@@ -91,6 +100,9 @@ func loadConfig() Config {
 			if fileCfg.AdminToken != "" {
 				c.AdminToken = fileCfg.AdminToken
 			}
+			if fileCfg.VisionTimeoutSeconds > 0 {
+				c.VisionTimeoutSeconds = fileCfg.VisionTimeoutSeconds
+			}
 		} else {
 			fmt.Fprintf(os.Stderr, "warn: read config file failed: %v\n", err2)
 		}
@@ -111,8 +123,8 @@ func loadConfig() Config {
 	} else {
 		adminMasked = "empty"
 	}
-	fmt.Fprintf(os.Stderr, "using config: %s\nmodels=%v baseURL=%s key=%s template=%s sqlite=%s admin=%s\n",
-		path, c.Models, c.SiliconflowBaseURL, masked, c.TemplatePath, c.SQLitePath, adminMasked)
+	fmt.Fprintf(os.Stderr, "using config: %s\nmodels=%v baseURL=%s key=%s template=%s sqlite=%s admin=%s timeout=%ds\n",
+		path, c.Models, c.SiliconflowBaseURL, masked, c.TemplatePath, c.SQLitePath, adminMasked, c.VisionTimeoutSeconds)
 	return c
 }
 

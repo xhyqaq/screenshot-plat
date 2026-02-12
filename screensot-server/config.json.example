@@ -6,5 +6,6 @@
   "siliconflow_api_key": "${PUT_YOUR_KEY_HERE}",
   "template_path": "web/result.html",
   "sqlite_path": "data/invites.db",
-  "admin_token": "${PUT_ADMIN_TOKEN_HERE}"
+  "admin_token": "${PUT_ADMIN_TOKEN_HERE}",
+  "vision_timeout_seconds": 120
 }
